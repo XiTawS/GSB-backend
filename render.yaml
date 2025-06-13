@@ -4,6 +4,9 @@ services:
     env: node
     buildCommand: npm install
     startCommand: npm start
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,4 +19,6 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
       - key: AWS_BUCKET_NAME
-        sync: false 
+        sync: false
+      - key: PORT
+        value: 10000 
