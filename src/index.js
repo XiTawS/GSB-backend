@@ -19,9 +19,15 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Connexion à MongoDB
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URL, {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+})
   .then(() => console.log('Connecté à MongoDB'))
-  .catch((err) => console.error('Erreur de connexion à MongoDB:', err));
+  .catch((err) => {
+    console.error('Erreur de connexion à MongoDB:', err);
+    process.exit(1); // Arrête l'application si pas de connexion DB
+  });
 
 // Route de test
 app.get('/', (req, res) => {
@@ -33,7 +39,7 @@ app.use('/invoices', invoiceRoutes);
 app.use('/auth', authenticationRoutes);
 
 // Démarrage du serveur
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur en cours d'exécution sur le port ${PORT}`);
 });

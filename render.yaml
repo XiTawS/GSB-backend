@@ -2,15 +2,15 @@ services:
   - type: web
     name: gsb-backend
     env: node
-    buildCommand: npm install
-    startCommand: npm start
     plan: free
+    buildCommand: npm run build
+    startCommand: npm start
     healthCheckPath: /
     autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MONGODB_URI
+      - key: MONGODB_URL
         sync: false
       - key: JWT_SECRET
         sync: false
@@ -20,5 +20,10 @@ services:
         sync: false
       - key: AWS_BUCKET_NAME
         sync: false
-      - key: PORT
-        value: 10000 
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1
+    deploy:
+      timeout: 180
+      maxConcurrentDeploys: 1 
