@@ -1,59 +1,91 @@
 const User = require('../models/user_model');
+const sha256 = require('js-sha256');
+const {uploadToS3} = require('../utils/s3')
 
 // Créer un nouvel utilisateur
 const createUser = async (req, res) => {
-    const { name, email, password, role } = req.body;
-    const user = new User({ name, email, password, role });
+  try {
+    const { firstName, lastName, email, password, role } = req.body;
+    const user = new User({ firstName, lastName, email, password, role });
     await user.save();
     res.status(201).json(user);
-};
-
-// Récupérer tous les utilisateurs
-const getAllUsers = async (req, res) => {
-    const users = await User.find();
-    if(!users){
-      res.status(404).json({ message: "Users not found" });
-      return;
+  } catch (error) {
+    if(error.message === 'User already exists'){
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: error.message });
     }
-    res.json(users);
+  }
 };
 
 // Récupérer un utilisateur par son email
-const getUserByEmail = async (req, res) => {
-    const user = await User.find({email: req.params.email});
-    if(!user){
-      res.status(404).json({ message: "User not found" });
-      return;
-    }
-    res.json(user);
+const getUsers = async (req, res) => {
+  try {
+    // Si l'email est présent dans la requête, on filtre les utilisateurs par email
+    const email = req.query.email ? {email: req.query.email} : {};
+    const users = await User.find(email);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error getting users" });
+  }
 };
 
-// Mettre à jour un utilisateur
-const updateUserbyEmail = async (req, res) => {
-    const user = await User.find({email: req.params.email});
-    if(!user){
-      res.status(404).json({ message: "User not found" });
-      return;
+const updateUser = async (req, res) => {
+  try {
+    const {email} = req.query;
+    const {firstName, lastName, newEmail, password, role, avatar} = req.body; // Ajout avatar
+    const updateFields = {};
+    if (firstName) updateFields.firstName = firstName;
+    if (lastName) updateFields.lastName = lastName;
+    if (newEmail) updateFields.email = newEmail;
+    if (role) updateFields.role = role;
+    if (password) {
+      updateFields.password = sha256(password + process.env.SALT);
     }
-    await User.updateOne({email: req.params.email}, req.body);
-    res.status(200).json({ message: "User updated" });
+    // Ajout : si avatar en base64 ou url dans le body
+    if (avatar) {
+      updateFields.avatar = avatar;
+    }
+    // Si tu veux garder l'upload S3 pour les fichiers envoyés en multipart :
+    if (req.file) {
+      updateFields.avatar = await uploadToS3(req.file);
+    }
+    const user = await User.findOneAndUpdate({email}, updateFields, {new: true});
+    if(!user){
+      throw new Error('User not found', { cause: 404 })
+    }else {
+      res.status(200).json(user);
+    }
+  } catch (error) {
+    if (error.cause === 404) {
+      res.status(error.cause).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: error.message });
+    }
+  }
 };
 
 // Supprimer un utilisateur
-const deleteUserbyEmail = async (req, res) => {
-    const user = await User.find({email: req.params.email});
+const deleteUser = async (req, res) => {
+  try {
+    const {email} = req.query;
+    const user = await User.findOneAndDelete({email});
     if(!user){
-      res.status(404).json({ message: "User not found" });
-      return;
+      throw new Error('User not found', { cause: 404 })
     }
-    await User.deleteOne({email: req.params.email});
-    res.status(200).json({ message: "User deleted" });
+    res.json({ message: "User deleted" });
+  } catch (error) {
+    if (error.cause === 404) {
+      res.status(error.cause).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: "Error deleting user" });
+    }
+  }
 };
 
 module.exports = {
     createUser,
-    getAllUsers,
-    getUserByEmail,
-    updateUserbyEmail,
-    deleteUserbyEmail
+    getUsers,
+    updateUser,
+    deleteUser
 }; 

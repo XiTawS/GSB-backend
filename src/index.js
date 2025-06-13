@@ -1,14 +1,21 @@
-require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const userRoutes = require('./routes/user_route');
 const invoiceRoutes = require('./routes/invoice_route');
+const authenticationRoutes = require('./routes/authentication_route');
 
 const app = express();
 
+// Configuration CORS
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Connexion à MongoDB
@@ -23,9 +30,10 @@ app.get('/', (req, res) => {
 
 app.use('/users', userRoutes);
 app.use('/invoices', invoiceRoutes);
+app.use('/auth', authenticationRoutes);
 
 // Démarrage du serveur
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur en cours d'exécution sur le port ${PORT}`);
 });

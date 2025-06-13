@@ -1,10 +1,15 @@
 const mongoose = require('mongoose');
+const sha256 = require('js-sha256');
+
 
 const userSchema = new mongoose.Schema({
-    name: {
+    firstName: {
         type: String,
         required: true,
-        unique: true
+    },
+    lastName: {
+        type: String,
+        required: true,
     },
     email: {
         type: String,
@@ -19,14 +24,23 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    invoices: {
-        type: [mongoose.Schema.Types.ObjectId],
-        ref: 'Invoice'
+    avatar: {
+        type: String,
+        default: 'https://www.gravatar.com/avatar/?d=mp'
     },
     createdAt: {
         type: Date,
         default: Date.now
     }
+});
+
+userSchema.pre('save', async function(next) {
+    const existingUser = await User.findOne({email: this.email});
+    if(existingUser){
+        throw new Error('User already exists');
+    }
+    this.password = sha256(this.password + process.env.SALT);
+    next();
 });
 
 const User = mongoose.model('User', userSchema);

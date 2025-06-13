@@ -1,8 +1,12 @@
 const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true
+    },
     date: {
-        type: Date,
+        type: String,
         required: true
     },
     amount: {
@@ -11,11 +15,14 @@ const invoiceSchema = new mongoose.Schema({
     },
     proof: {
         type: String,
-        required: true
     },
     description: {
         type: String,
         required: true
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     status: {
         type: String,
