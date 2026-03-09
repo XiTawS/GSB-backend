@@ -1,139 +1,192 @@
 # GSB Backend
 
-Backend de l'application GSB. Une application de gestion de notes de frais développé avec Node.js, Express et MongoDB.
+API REST pour la gestion des notes de frais — Galaxy Swiss Bourdin.
 
-## 🏗 Architecture
+## Stack technique
 
-Le projet suit une architecture MVC (Modèle-Vue-Contrôleur) avec une structure de dossiers claire :
+| Technologie | Rôle |
+|-------------|------|
+| **Node.js** (≥18) | Runtime |
+| **Express** | Framework HTTP |
+| **MongoDB** / Mongoose | Base de données |
+| **JWT** | Authentification |
+| **AWS S3** | Stockage fichiers (justificatifs, avatars) |
+| **Multer** | Upload multipart |
+| **SHA-256** | Hash des mots de passe |
 
-```
-src/
-├── controllers/     # Logique métier
-├── models/         # Schémas MongoDB
-├── routes/         # Définition des routes
-├── middlewares/    # Middlewares personnalisés
-├── utils/          # Utilitaires (S3, etc.)
-└── index.js        # Point d'entrée de l'application
-```
+## Démarrage rapide
 
-## 🚀 Fonctionnalités
-
-### Authentification
-- Inscription des utilisateurs
-- Connexion avec JWT
-- Gestion des rôles (admin, utilisateur)
-
-### Gestion des Utilisateurs
-- CRUD complet des utilisateurs
-- Upload d'avatar (stockage sur AWS S3)
-- Avatar par défaut pour les nouveaux utilisateurs
-
-### Gestion des Factures
-- Création de factures avec preuve (PDF/image)
-- Upload des preuves sur AWS S3
-- Suivi du statut des factures
-- Filtrage par utilisateur/statut
-
-## 🔧 Technologies Utilisées
-
-- **Node.js** : Runtime JavaScript
-- **Express** : Framework web
-- **MongoDB** : Base de données
-- **Mongoose** : ODM pour MongoDB
-- **AWS S3** : Stockage des fichiers
-- **JWT** : Authentification
-- **Multer** : Gestion des uploads de fichiers
-
-## 🛠 Installation
-
-1. Cloner le repository
 ```bash
-git clone [URL_DU_REPO]
-```
+# 1. Cloner le repo
+git clone https://github.com/XiTawS/GSB-backend.git
+cd GSB-backend
 
-2. Installer les dépendances
-```bash
+# 2. Installer les dépendances
 npm install
-```
 
-3. Configurer les variables d'environnement
-```env
-MONGODB_URL=votre_url_mongodb
-JWT_SECRET=votre_secret_jwt
-AWS_ACCESS_KEY_ID=votre_clé_aws
-AWS_SECRET_ACCESS_KEY=votre_clé_secrète_aws
-AWS_BUCKET_NAME=votre_bucket_s3
-SALT=votre_salt
-```
+# 3. Configurer les variables d'environnement
+cp .env.example .env
+# → Remplir les valeurs (voir section ci-dessous)
 
-4. Lancer le serveur
-```bash
-# Développement
+# 4. Lancer en développement
 npm run dev
 
-# Production
+# 5. Lancer en production
 npm start
 ```
 
-## 📝 API Endpoints
+## Variables d'environnement
+
+| Variable | Description | Exemple |
+|----------|-------------|---------|
+| `PORT` | Port d'écoute | `3001` |
+| `MONGODB_URL` | URI MongoDB | `mongodb+srv://user:pass@cluster.mongodb.net/gsb` |
+| `JWT_SECRET` | Clé secrète JWT | `votre-secret-jwt` |
+| `SALT` | Salt pour le hash SHA-256 | `votre-salt` |
+| `FRONTEND_URL` | URL du frontend (CORS) | `https://gsb-frontend-six.vercel.app` |
+| `AWS_ACCESS_KEY_ID` | Clé AWS S3 | `AKIA...` |
+| `AWS_SECRET_ACCESS_KEY` | Secret AWS S3 | `...` |
+| `AWS_BUCKET_NAME` | Nom du bucket S3 | `gsb-uploads` |
+
+## Architecture
+
+```
+src/
+├── index.js                    # Point d'entrée, config Express + MongoDB
+├── controllers/
+│   ├── authentication_controller.js  # Login, vérification JWT
+│   ├── invoice_controller.js         # CRUD factures
+│   └── user_controller.js            # CRUD utilisateurs
+├── models/
+│   ├── invoice_model.js        # Schéma Mongoose (facture)
+│   └── user_model.js           # Schéma Mongoose (utilisateur)
+├── routes/
+│   ├── authentication_route.js # POST /auth/login
+│   ├── invoice_route.js        # CRUD /invoices
+│   └── user_route.js           # CRUD /users
+├── middlewares/
+│   └── upload.js               # Multer (upload fichiers, max 5MB)
+└── utils/
+    └── s3.js                   # Upload vers AWS S3
+```
+
+## API Reference
 
 ### Authentification
-- `POST /auth/login` : Connexion utilisateur
+
+| Méthode | Route | Description | Auth |
+|---------|-------|-------------|------|
+| `POST` | `/auth/login` | Connexion | ❌ |
+
+**Body :**
+```json
+{ "email": "user@gsb.fr", "password": "user123" }
+```
+
+**Réponse :** `{ "token": "eyJhbG..." }`
+
+---
 
 ### Utilisateurs
-- `POST /users` : Création d'un utilisateur
-- `GET /users` : Liste des utilisateurs
-- `PUT /users` : Modification d'un utilisateur
-- `DELETE /users` : Suppression d'un utilisateur
+
+| Méthode | Route | Description | Auth |
+|---------|-------|-------------|------|
+| `POST` | `/users` | Créer un utilisateur | ❌ |
+| `GET` | `/users` | Lister tous les utilisateurs | ✅ |
+| `GET` | `/users?email=xxx` | Récupérer un utilisateur par email | ✅ |
+| `PUT` | `/users?email=xxx` | Modifier un utilisateur | ✅ |
+| `DELETE` | `/users?email=xxx` | Supprimer un utilisateur | ✅ |
+
+**Créer un utilisateur :**
+```json
+{
+  "firstName": "Jean",
+  "lastName": "Dupont",
+  "email": "jean@gsb.fr",
+  "password": "motdepasse",
+  "role": "user"
+}
+```
+
+**Modifier un utilisateur :**
+```json
+{
+  "firstName": "Jean",
+  "lastName": "Dupont",
+  "newEmail": "jean.dupont@gsb.fr",
+  "password": "nouveaumotdepasse",
+  "role": "admin",
+  "avatar": "https://..." 
+}
+```
+
+---
 
 ### Factures
-- `POST /invoices` : Création d'une facture
-- `GET /invoices` : Liste des factures
-- `GET /invoices/:id` : Détails d'une facture
-- `PUT /invoices/:id` : Modification d'une facture
-- `DELETE /invoices/:id` : Suppression d'une facture
 
-## 🔒 Sécurité
+| Méthode | Route | Description | Auth |
+|---------|-------|-------------|------|
+| `POST` | `/invoices` | Créer une facture (multipart) | ✅ |
+| `GET` | `/invoices` | Lister les factures | ✅ |
+| `GET` | `/invoices/:id` | Détail d'une facture | ❌ |
+| `PUT` | `/invoices/:id` | Modifier une facture | ❌ |
+| `DELETE` | `/invoices/:id` | Supprimer une facture | ❌ |
 
-- Authentification JWT
-- Hachage des mots de passe avec SHA-256
-- Validation des types de fichiers (images/PDF)
-- Limitation de la taille des fichiers
-- CORS configuré pour la production
+> **Note :** Les admins voient toutes les factures, les utilisateurs ne voient que les leurs.
 
-## 🚀 Déploiement
-
-Le projet est déployé sur Render.com avec les configurations suivantes :
-- Build Command : `npm run build`
-- Start Command : `npm start`
-- Node Version : >= 18.0.0
-
-## 📦 Structure des Données
-
-### Utilisateur
-```javascript
+**Créer une facture (multipart/form-data) :**
+- `proof` : fichier image ou PDF (max 5MB)
+- `metadata` : JSON stringifié contenant :
+```json
 {
-  firstName: String,
-  lastName: String,
-  email: String,
-  password: String,
-  role: String,
-  avatar: String,
-  createdAt: Date
+  "title": "Restaurant client",
+  "date": "2026-03-07T12:00:00.000Z",
+  "amount": 45.50,
+  "type": "Repas",
+  "description": "Déjeuner avec le client X",
+  "status": "Pending"
 }
 ```
 
-### Facture
-```javascript
-{
-  title: String,
-  date: String,
-  amount: Number,
-  proof: String,
-  description: String,
-  user: ObjectId,
-  status: String,
-  type: String,
-  createdAt: Date
-}
-```
+**Statuts possibles :** `Pending`, `Approved`, `Rejected`
+
+---
+
+### Modèles de données
+
+**User**
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `firstName` | String | ✅ | Prénom |
+| `lastName` | String | ✅ | Nom |
+| `email` | String | ✅ | Email (unique) |
+| `password` | String | ✅ | Hash SHA-256 |
+| `role` | String | ✅ | `user` ou `admin` |
+| `avatar` | String | ❌ | URL avatar |
+| `createdAt` | Date | auto | Date de création |
+
+**Invoice**
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `title` | String | ✅ | Titre de la facture |
+| `date` | String | ✅ | Date de la dépense |
+| `amount` | Number | ✅ | Montant en euros |
+| `proof` | String | ❌ | URL du justificatif (S3) |
+| `description` | String | ✅ | Description |
+| `user` | ObjectId | ❌ | Ref vers User |
+| `status` | String | ✅ | `Pending` / `Approved` / `Rejected` |
+| `type` | String | ✅ | Type de dépense |
+| `createdAt` | Date | auto | Date de création |
+
+## Déploiement
+
+Le backend est déployé sur **Render** (plan free) :
+- Auto-deploy depuis `main`
+- URL : `https://gsb-backend-946k.onrender.com`
+
+## Comptes de test
+
+| Rôle | Email | Mot de passe |
+|------|-------|-------------|
+| Admin | `admin@gsb.fr` | `admin123` |
+| User | `user@gsb.fr` | `user123` |
