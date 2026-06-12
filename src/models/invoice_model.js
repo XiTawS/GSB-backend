@@ -30,6 +30,7 @@ const invoiceSchema = new mongoose.Schema({
     },
     type: {
         type: String,
+        enum: ['Transport', 'Hébergement', 'Restauration', 'Autre'],
         required: true
     },
     createdAt: {
