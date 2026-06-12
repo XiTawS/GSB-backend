@@ -22,7 +22,13 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
+        enum: ['user', 'manager', 'admin'],
         required: true
+    },
+    manager: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
     },
     avatar: {
         type: String,
